@@ -20,32 +20,33 @@
 
         try {
             $result = $db->query($query);
-            // $all = $result->fetch_all(MYSQLI_ASSOC);
             $fields = $result->fetch_fields();
-            $fields_count = $result->field_count;
-
-            $r = $result->num_rows;
+            $num_rows = $result->num_rows;
             
             echo "<table>";
             echo "<thead>";
             echo "<tr>";
-            for ($i=1; $i<$fields_count; $i++) {
-                printf("<th>%s</th>", $fields[$i]->name);
+            foreach($fields as $i => $obj) {
+                if ($i == 0) continue; // skip the first field because it is ID
+                printf("<th>%s</th>", $obj->name);
             }
             echo "</tr>";
             echo "</thead>";
 
             echo "<tbody>";
-            for ($i=0; $i<$r; $i++) {
+            for ($i=0; $i < $num_rows; $i++) {
                 $arr = $result->fetch_row();
                 echo "<tr>";
-                for ($j=1; $j<$fields_count; $j++) {
-                    printf("<td>%s</td>", $arr[$j]);
+
+                foreach($arr as $j => $val) {
+                    if ($j == 0) continue; // skip the first value because it is ID
+                    printf("<td>%s</td>", $val);
                 }
                 echo "</tr>";
             }
             echo "</tbody>";
             echo "</table>";
+
             $db->close();
         } catch (Exception) {
             $db->close();
@@ -81,7 +82,7 @@
                 
                     $stock = $_GET['stock'];
                     $db = connectToMySQL();
-                    $data = select($db, $stock);
+                    select($db, $stock);
                 ?>
             </div>
         </div>
