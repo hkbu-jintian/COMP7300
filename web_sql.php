@@ -16,7 +16,7 @@
     }
 
     function select($db, $stock) {
-        $query = "select * from $stock";
+        $query = "select * from `$stock`";
 
         try {
             $result = $db->query($query);
@@ -61,7 +61,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Stock Chart</title>
     <script type="text/javascript" src="https://cdn.canvasjs.com/canvasjs.stock.min.js"></script>
-    <link rel="stylesheet" href="web_sql.css">
+    <link rel="stylesheet" href="web.css">
 </head>
 <body>
     <div class='container'>

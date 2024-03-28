@@ -1,18 +1,17 @@
 <?php
     function download() {
-      $stock = $_GET['stock'];
-      $period1 = strtotime($_GET['start-date']); // start timestamp
-      $period2 = strtotime($_GET['end-date']);   // end timestamp
+        $stock = $_GET['stock'];
+        $period1 = strtotime($_GET['start-date']); // start timestamp
+        $period2 = strtotime($_GET['end-date']);   // end timestamp
 
-      $url = "https://query1.finance.yahoo.com/v7/finance/download/$stock?period1=$period1&period2=$period2&interval=1d&events=history&includeAdjustedClose=true";
-      
-      $content = file_get_contents($url); // download data from the given url
-      if ($content) {
-        $data = explode("\n", $content);  // get data array splitted by \n
-        return $data;
-      }
-      
-      return array();
+        $url = "https://query1.finance.yahoo.com/v7/finance/download/$stock?period1=$period1&period2=$period2&interval=1d&events=history&includeAdjustedClose=true";
+
+        $content = file_get_contents($url); // download data from the given url
+        if ($content) {
+            $data = explode("\n", $content);  // get data array splitted by \n
+            return $data;
+        }
+        return array();
     }
 
     function listDataInFormat($data) {
@@ -25,27 +24,27 @@
             // split the row by comma to get an array that stores date and price information
             // each row array will contain information below
             // [Date, Open, High, Low, Close, Adj Close, Volume]
-            $rowArr = explode(",", $row);
+            $dataRowArr = explode(",", $row);
         
             // we need to rearrange the data to the format that canvasjs accepts
             // each candleRow is an associated array that contains key x and key y
             // x: date
             // y: open, high, low, close
-            $candleRowArr = array(
+            $formattedRow = array(
                 "x" => null,
                 "y" => []
             );
         
-            $candleRowArr["x"] = $rowArr[0];
-            $candleRowArr["y"] = array(
-                "open" => $rowArr[1], // open
-                "high" => $rowArr[2], // high
-                "low" => $rowArr[3], // low
-                "close" => $rowArr[4],  // close
-                "AdjClose" => $rowArr[5], // adj close
-                "volume" => $rowArr[6] // volume
+            $formattedRow["x"] = $dataRowArr[0];
+            $formattedRow["y"] = array(
+                "open" => $dataRowArr[1], // open
+                "high" => $dataRowArr[2], // high
+                "low" => $dataRowArr[3], // low
+                "close" => $dataRowArr[4],  // close
+                "AdjClose" => $dataRowArr[5], // adj close
+                "volume" => $dataRowArr[6] // volume
             );
-            array_push($formattedData, $candleRowArr);
+            array_push($formattedData, $formattedRow);
         }
         return $formattedData;
     }
@@ -54,16 +53,16 @@
     // so that it can be used to display in stock chart
     function listPriceDataFromPHP($arr) {
         foreach ($arr as $row) {
-            $x = $row["x"];
+            $x = $row["x"];  // Date
             $y = $row["y"];
-            printf(
-                "{ x: new Date('%s'), y: [%.2f, %.2f, %.2f, %.2f] },", // print an object with format
-                $x,
-                $y["open"],
-                $y["high"],
-                $y["low"],
-                $y["close"]
-            );
+            $open = $y['open'];
+            $high = $y['high'];
+            $low = $y['low'];
+            $close = $y['close']; 
+            print("{
+                    'x': new Date('$x'),
+                    'y': [$open, $high, $low, $close]
+                },");
         }
     }
 
@@ -71,7 +70,11 @@
         foreach ($arr as $row) {
             $x = $row["x"];
             $y = $row["y"];
-            printf("{ x: new Date('%s'), y: %.2f },", $x, $y["close"]);
+            $close = $y["close"];
+            print("{
+                    x: new Date('$x'),
+                    y: $close
+                },");
         }
     }
 
@@ -79,7 +82,11 @@
         foreach ($arr as $row) {
             $x = $row["x"];
             $y = $row["y"];
-            printf("{ x: new Date('%s'), y: %.2f },", $x, $y["volume"]);
+            $volume = $y["volume"];
+            print("{
+                    x: new Date('$x'),
+                    y: $volume
+                },");
         }
     }
 ?>
@@ -116,21 +123,17 @@
     <script type="text/javascript">
         <?php
             if (sizeof($_GET) == 0) // if there exists empty required fields, end the program
-                return;
+                exit();
         
             $stock = $_GET['stock'];
             $data = download();
-            $candleData = listDataInFormat($data);
+            $formattedData = listDataInFormat($data);
         ?>
+    
+        var priceData = [<?php listPriceDataFromPHP($formattedData); ?>]
+        var volumeData = [<?php listVolumeFromPHP($formattedData); ?>]
+        var closedData = [<?php listClosePriceFromPHP($formattedData); ?>]
         
-        const priceData = [<?php listPriceDataFromPHP($candleData); ?>]
-        const volumeData = [<?php listVolumeFromPHP($candleData); ?>]
-        const closedData = [<?php listClosePriceFromPHP($candleData); ?>]
-
-        console.log(priceData)
-        console.log(volumeData)
-        console.log(closedData)
-
         if (priceData.length > 0) {
             var stockChart = new CanvasJS.StockChart("chartContainer", {
                 theme: "light2",
@@ -157,7 +160,7 @@
                         axisY: { prefix: "$ "},
                         data: [{
                             showInLegend: true,
-                            name: "<?php echo $stock; ?> Price (USD)",
+                            name: "Price (USD)",
                             yValueFormatString: "$#,###.##",
                             type: "candlestick",
                             dataPoints: priceData
@@ -171,7 +174,7 @@
                         legend: { verticalAlign: "top", fontSize: 14 },
                         data: [{
                             showInLegend: true,
-                            name: "<?php echo $stock; ?> Volume (USD)",
+                            name: "Volume (USD)",
                             yValueFormatString: "$#,###.##",
                             dataPoints: volumeData
                         }]
@@ -182,10 +185,10 @@
                         dataPoints: closedData
                     }]
                 }
-        });
+            });
     
-        stockChart.render();
-    }
+            stockChart.render();
+        }
     </script>
 </body>
 </html>
